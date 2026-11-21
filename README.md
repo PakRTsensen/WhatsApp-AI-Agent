@@ -1,140 +1,95 @@
-# Llama Agent Bot (Noppo Assistant)
+# WhatsApp-AI-Agent
 
-[![Node.js Version](https://img.shields.io/badge/Node.js-%3E%3D18.0.0-brightgreen.svg)](https://nodejs.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![WhatsApp Engine](https://img.shields.io/badge/Baileys-MultiFileAuth-orange.svg)](https://github.com/itsliaaa/baileys)
-[![Agent Runtime](https://img.shields.io/badge/Hermes_Agent-Nous_Research-purple.svg)](https://github.com/NousResearch/Hermes-Agent)
-[![Test Suites](https://img.shields.io/badge/Tests-13%20Passing-success.svg)](test/)
+<p align="center">
+  <img src="docs/architecture.png" alt="WhatsApp-AI-Agent Architecture" width="100%">
+</p>
 
-An enterprise-grade, autonomous AI WhatsApp Agent and bot framework built on Node.js, [Baileys](https://github.com/itsliaaa/baileys), and [Hermes Agent CLI](https://github.com/NousResearch/Hermes-Agent). Features native multi-model LLM execution loops, streaming response edits, visual comprehension (multimodal vision), Model Context Protocol (MCP) tool integration, hot-reloading plugin architecture, and automated WhatsApp group moderation.
+A WhatsApp bot focused on providing an **autonomous agentic assistant** right inside WhatsApp chats, powered by **Node.js + Baileys** and **Nous Hermes Agent CLI**. 
+
+Instead of acting like a simple question-and-answer chatbot, this bot runs an agentic execution loop capable of multi-step reasoning, tool execution, and self-correction. It comes bundled with a dedicated **WhatsApp Model Context Protocol (MCP) Server**, allowing the AI agent to inspect chat context, check quoted message threads, administer groups, and safely dispatch files back to WhatsApp. 
+
+In addition to its agentic capabilities, it includes standard bot utilities such as group moderation (antilink, antiforward, group scheduling), media utilities, and a modular hot-reloading plugin system.
 
 ---
 
 ## Table of Contents
 
-- [Overview & Architecture](#overview--architecture)
-- [Key Features](#key-features)
+- [Core Highlights](#core-highlights)
+- [How It Works (Architecture)](#how-it-works-architecture)
 - [System Requirements](#system-requirements)
-- [Full Installation & Setup Guide](#full-installation--setup-guide)
+- [Full Setup & Installation Guide](#full-setup--installation-guide)
   - [1. Server Preparation](#1-server-preparation)
   - [2. Clone & Install Dependencies](#2-clone--install-dependencies)
-  - [3. Install & Setup Hermes Agent](#3-install--setup-hermes-agent)
-  - [4. Configure Environment & Settings](#4-configure-environment--settings)
+  - [3. Install Hermes Agent CLI](#3-install-hermes-agent-cli)
+  - [4. Configure Settings & Models](#4-configure-settings--models)
   - [5. Link WhatsApp via Pairing Code](#5-link-whatsapp-via-pairing-code)
-  - [6. Configure MCP Toolsets](#6-configure-mcp-toolsets)
-  - [7. Production Daemon (PM2)](#7-production-daemon-pm2)
-- [Noppo Assistant (AI Agent Engine)](#noppo-assistant-ai-agent-engine)
-- [Command Reference](#command-reference)
-- [Plugin Architecture](#plugin-architecture)
-- [Control API & Outbound Bridge](#control-api--outbound-bridge)
-- [Directory Structure](#directory-structure)
-- [Verification & Testing](#verification--testing)
-- [Security & Operational Best Practices](#security--operational-best-practices)
-- [License & Authors](#license--authors)
+  - [6. Configure the WhatsApp MCP Server](#6-configure-the-whatsapp-mcp-server)
+  - [7. Run with PM2 (Background Daemon)](#7-run-with-pm2-background-daemon)
+- [Using the Agentic Assistant (Noppo)](#using-the-agentic-assistant-noppo)
+- [WhatsApp MCP Server (`wa_control`)](#whatsapp-mcp-server-wa_control)
+- [General Bot Features & Commands](#general-bot-features--commands)
+- [Plugin System & Hot Reload](#plugin-system--hot-reload)
+- [Testing & Verification](#testing--verification)
+- [Security & Operational Notes](#security--operational-notes)
+- [License & Credits](#license--credits)
 
 ---
 
-## Overview & Architecture
+## Core Highlights
 
-Llama Agent Bot bridges instant messaging and autonomous developer-agent execution. Unlike traditional chatbot wrappers that respond with static completions, this bot uses a decoupled dual-engine architecture:
-
-1. **WhatsApp Messaging Gateway (`index.js`, `stenly.js`)**:
-   - Manages WebSocket connections to WhatsApp Web servers using Baileys.
-   - Normalizes incoming message formats (text, ephemeral messages, view-once media, voice notes, stickers, forwarded channels, reactions, polls).
-   - In-memory 30-minute rolling cache (`lib/message_cache.js`) for context retrieval without writing chat content to disk.
-   - Dispatches user queries to hot-reloaded plugins or routes AI prompts to the Noppo engine.
-
-2. **Autonomous AI Execution Engine (`lib/noppo_hermes.js`, `lib/noppo_commands.js`)**:
-   - Spawns background worker processes using `hermes chat --format stream-json`.
-   - Intercepts JSONL stream chunks (token deltas, tool executions, results) and progressively streams them back to WhatsApp by editing a single message in real time.
-   - Integrates with Model Context Protocol (MCP) servers (local command execution, web inspection, OSINT, network reconnaissance, and WhatsApp automation).
-   - Governed by custom personas and operational guidelines defined in `SOUL.md`.
-
-```
-                  ┌──────────────────────────────────────────────┐
-                  │                 WhatsApp App                 │
-                  └──────────────────────┬───────────────────────┘
-                                         │ WebSocket (Baileys)
-                                         ▼
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                           WhatsApp Gateway Layer                                │
-│                                                                                 │
-│   ┌────────────────────┐   ┌─────────────────────┐   ┌──────────────────────┐  │
-│   │ Message Normalizer │──▶│   In-Memory Cache   │──▶│ Hot-Reload Plugins   │  │
-│   │      (smsg)        │   │ (30-min rolling)    │   │ (plugins/**/*.js)    │  │
-│   └────────────────────┘   └─────────────────────┘   └──────────┬───────────┘  │
-│                                                                 │              │
-│                                                                 ▼              │
-│                                                      ┌──────────────────────┐  │
-│                                                      │  Noppo Router & Queue│  │
-│                                                      └──────────┬───────────┘  │
-└─────────────────────────────────────────────────────────────────┼───────────────┘
-                                                                  │ spawn CLI
-                                                                  ▼
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                       Hermes Autonomous Agent Engine                            │
-│                                                                                 │
-│   ┌─────────────────────────────────────────────────────────────────────────┐   │
-│   │               Model Router / 9Router (OpenAI-compatible)                │   │
-│   │         [GPT Luna 6 1M]       [DeepSeek V4.1 Flash]       [...]         │   │
-│   └────────────────────────────────────┬────────────────────────────────────┘   │
-│                                        │                                        │
-│   ┌────────────────────────────────────▼────────────────────────────────────┐   │
-│   │                     Model Context Protocol (MCP) Tools                  │   │
-│   │   • wa_control       • chrome-devtools      • hexstrike-server          │   │
-│   │   • openosint        • osint-tools          • xposedornot               │   │
-│   └─────────────────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────────────────┘
-```
+- **Agentic Assistant in WhatsApp**: Uses Hermes Agent CLI to plan, chain tools, run terminal commands, search the web, and solve tasks autonomously.
+- **WhatsApp Control via MCP**: Provides a built-in FastMCP server (`wa_control`) so the agent can read chat threads, inspect previous messages, manage group settings, and deliver generated files to the owner.
+- **Live Stream Edits**: Responses stream into WhatsApp by editing a single message every 900ms as tokens and tool events arrive, keeping chat logs clean without spamming new messages.
+- **Multimodal Vision**: Reads attached images or quoted/replied images and forwards them to vision-capable models for analysis.
+- **Pairing Code Setup**: Connect to WhatsApp directly using an 8-character pairing code without needing to scan QR codes via terminal.
+- **Zero-Disk Rolling History**: Conversation context is buffered in-memory (rolling 30-minute window) so private messages are not permanently dumped to disk.
+- **Hot-Reloading Plugins**: Create or modify `.js` plugin files in `plugins/` and they reload automatically in under 100ms without restarting the bot.
+- **Automated Group Moderation**: Built-in antilink, antiforwarding (channel spam blocker), and scheduled group opening/closing.
 
 ---
 
-## Key Features
+## How It Works (Architecture)
 
-- **Live WhatsApp Streaming**: Edits a single message every 900ms as tokens generate, avoiding message spam while providing real-time feedback.
-- **Multimodal Image Comprehension**: Extracts attached or replied images, validates MIME types, saves to secure temporary storage, and submits them to vision models.
-- **Pairing Code Authentication**: Connect without scanning QR codes. Connect directly using an 8-character pairing code (custom code `STENLYCL` supported).
-- **Zero-Disk Chat Retention**: Sensitive conversation history and rolling threads remain purely in-memory (`globalThis.__waStore` and `lib/message_cache.js`).
-- **Hot-Reloading Plugin System**: Any `.js` script inside `plugins/` automatically reloads on save within 100ms without restarting the process.
-- **Comprehensive Group Moderation**:
-  - `antilink`: Detects and removes invite links with configurable auto-kick and message deletion.
-  - `antiforward`: Blocks unwanted broadcast/channel forward spam with admin exemptions.
-  - `closegroup`: Schedule-based automated group opening and closing.
-- **Built-in Outbound HTTP Bridge (`:5680`) & Control API (`:5685`)**: Enables local scripts and MCP tools to send messages, manage groups, and dispatch documents safely to the owner.
+1. **Inbound WhatsApp Layer (`index.js`, `stenly.js`)**:
+   - Maintains a stable WebSocket connection using `@itsliaaa/baileys`.
+   - Normalizes incoming message formats (text, ephemeral messages, view-once media, voice notes, stickers, reactions).
+   - In-memory rolling cache (`lib/message_cache.js`) buffers recent chat history to provide conversation context when replying.
+
+2. **Noppo AI Bridge (`lib/noppo_hermes.js`, `lib/noppo_commands.js`)**:
+   - When a user mentions `@bot` or uses `/noppo <prompt>`, the bridge prepares metadata and spawns the Hermes CLI (`hermes chat --format stream-json`).
+   - Parses stdout stream events and updates WhatsApp via message edits (`noppo_delivery.js`).
+
+3. **WhatsApp MCP Tool Server (`mcp/wa_control_server.py`)**:
+   - Bridges the agent's MCP toolcalls back to WhatsApp through an internal control API (`http://127.0.0.1:5685`).
+   - Gives the agent native actions: fetch thread context, get recent chat messages, update group settings, and send generated files safely to the owner.
 
 ---
 
 ## System Requirements
 
-### Hardware
-| Component | Minimum | Recommended |
-|---|---|---|
-| **CPU** | 2 vCPU cores | 4 vCPU cores |
-| **RAM** | 2 GB | 4 GB - 8 GB (required if using Headless Chrome or Hexstrike) |
-| **Disk** | 10 GB SSD | 25 GB NVMe SSD |
-| **Network** | 10 Mbps public connection | 100 Mbps+ low-latency connection |
-
-### Operating System & Software
-- **Operating System**: Linux (Ubuntu 20.04 LTS, Ubuntu 22.04 LTS, Ubuntu 24.04 LTS, Debian 11/12).
-- **Node.js**: Version `>= 18.18.0` (Node.js 20 LTS or 22 LTS recommended).
-- **Python**: Version `>= 3.10` (Python 3.12 recommended for MCP toolsets).
-- **Process Manager**: PM2 (`npm install -g pm2`).
-- **Agent CLI**: Hermes Agent CLI (`hermes`) installed in PATH (`/usr/bin/hermes` or `/usr/local/bin/hermes`).
+| Resource | Minimum | Recommended | Notes |
+|---|---|---|---|
+| **CPU** | 2 vCPU cores | 4 vCPU cores | Sufficient for running Node.js + Hermes background jobs |
+| **RAM** | 2 GB | 4 GB | 4 GB recommended if using browser/Chromium tools |
+| **Storage** | 10 GB SSD | 20 GB SSD | For Node modules, Python venvs, and cache |
+| **OS** | Linux | Ubuntu 22.04 / 24.04 LTS or Debian 12 | Linux environment recommended |
+| **Node.js** | `>= 18.18.0` | Node.js 20 LTS or 22 LTS | Tested on Node 20 & 22 |
+| **Python** | `>= 3.10` | Python 3.11 / 3.12 | Required for the MCP server |
 
 ---
 
-## Full Installation & Setup Guide
+## Full Setup & Installation Guide
 
 ### 1. Server Preparation
 
-Update package lists and install required build tools and libraries:
+Update package repositories and install the necessary system packages:
 
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y curl wget git build-essential ffmpeg libvips-dev jq python3 python3-pip python3-venv
+sudo apt install -y curl wget git build-essential ffmpeg jq python3 python3-pip python3-venv
 ```
 
-Install Node.js (v22 LTS recommended):
+Install Node.js (v22 LTS recommended) and PM2:
 
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
@@ -142,29 +97,21 @@ sudo apt install -y nodejs
 sudo npm install -g pm2
 ```
 
-Verify installation:
-
-```bash
-node -v   # Output: v22.x.x
-npm -v    # Output: 10.x.x
-pm2 -v    # Output: 5.x.x
-```
-
 ---
 
 ### 2. Clone & Install Dependencies
 
-Clone this repository and install the production dependencies:
+Clone this repository and install Node.js dependencies:
 
 ```bash
-git clone https://github.com/glarceny/LlamaAgentHermes.git /LlamaAgentHermes
+git clone https://github.com/glarceny/WhatsApp-AI-Agent.git /LlamaAgentHermes
 cd /LlamaAgentHermes
 npm install
 ```
 
 ---
 
-### 3. Install & Setup Hermes Agent
+### 3. Install Hermes Agent CLI
 
 Install Hermes Agent CLI globally:
 
@@ -172,20 +119,20 @@ Install Hermes Agent CLI globally:
 curl -fsSL https://hermes.nousresearch.com/install.sh | bash
 ```
 
-Verify `hermes` is accessible in your environment:
+Verify installation:
 
 ```bash
 hermes --version
 ```
 
-Synchronize the agent persona and environment rules:
+Synchronize the system agent persona and instructions:
 
 ```bash
 mkdir -p /root/.hermes
 cp /LlamaAgentHermes/Hermes-kit/SOUL.md /root/.hermes/SOUL.md
 ```
 
-Create the credentials file `/root/.hermes/noppo.env` for API routing:
+Create `/root/.hermes/noppo.env` for model routing authentication:
 
 ```bash
 cat << 'EOF' > /root/.hermes/noppo.env
@@ -196,21 +143,21 @@ chmod 600 /root/.hermes/noppo.env
 
 ---
 
-### 4. Configure Environment & Settings
+### 4. Configure Settings & Models
 
 #### Owner & Bot Settings
-Edit `control/settings.js` to configure your owner numbers and bot identity:
+Edit `control/settings.js` to configure your WhatsApp owner numbers:
 
 ```javascript
 global.namaown = "Your Name";
 global.prefix = "/";
-global.botname = "Noppo Assistant";
+global.botname = "Noppo Agent";
 global.botversion = "v1.0";
-global.owner = ["6285199430173", "6285881325696"]; // Add owner numbers in international format without '+'
+global.owner = ["6285199430173", "6285881325696"]; // Owner numbers in international format (no '+')
 ```
 
 #### Model Router Configuration
-Edit `lib/noppo_config.js` to define your available models and router URL:
+Edit `lib/noppo_config.js` to configure your model endpoints (OpenAI-compatible / 9Router / OpenRouter):
 
 ```javascript
 module.exports = {
@@ -220,7 +167,7 @@ module.exports = {
         credentialsFile: '/root/.hermes/noppo.env'
     },
     models: [
-        { id: 'cx/gpt-6-luna[1m]', name: 'GPT Luna 6 (1M Context)', provider: 'openai', supportsVision: true },
+        { id: 'cx/gpt-6-luna[1m]', name: 'GPT Luna 6 (1M)', provider: 'openai', supportsVision: true },
         { id: 'dco/deepseek-ai/DeepSeek-V4.1-Flash-1017', name: 'DeepSeek V4.1 Flash', provider: 'openai', supportsVision: true }
     ],
     defaultModelId: 'cx/gpt-6-luna[1m]'
@@ -231,16 +178,15 @@ module.exports = {
 
 ### 5. Link WhatsApp via Pairing Code
 
-Start the bot interactively in your terminal for initial pairing:
+Run the bot directly in your terminal to pair your WhatsApp account:
 
 ```bash
 PAIRING_NUMBER=6283167054726 node index.js
 ```
 
-You will see:
+The terminal will display a pairing code:
 
 ```text
-Meminta pairing code untuk nomor: 6283167054726...
 =================================
 PAIRING CODE:  STENLYCL 
 =================================
@@ -248,16 +194,16 @@ Buka WhatsApp > Perangkat Tertaut > Tautkan Perangkat > masukkan kode di atas.
 ```
 
 1. Open **WhatsApp** on your phone.
-2. Tap **Settings** (or three dots) > **Linked Devices**.
+2. Go to **Settings** > **Linked Devices**.
 3. Select **Link a Device** > **Link with phone number instead**.
-4. Enter the code shown in your console (`STENLYCL` or auto-generated 8-digit code).
-5. Once connected, stop the process with `Ctrl+C`.
+4. Type in the code displayed in your terminal.
+5. Once connected, press `Ctrl+C` to stop the interactive run.
 
 ---
 
-### 6. Configure MCP Toolsets
+### 6. Configure the WhatsApp MCP Server
 
-To allow Hermes Agent to interact with WhatsApp and system utilities, register the `wa_control` MCP server in `/root/.hermes/config.yaml`:
+Add the `wa_control` MCP server to `/root/.hermes/config.yaml` so Hermes can use WhatsApp tools:
 
 ```yaml
 mcp_servers:
@@ -267,7 +213,7 @@ mcp_servers:
       - "/LlamaAgentHermes/mcp/wa_control_server.py"
 ```
 
-Verify that the MCP server responds correctly:
+Verify that the MCP server runs and connects to the bot's internal control API:
 
 ```bash
 python3 /LlamaAgentHermes/mcp/smoke_test.py
@@ -275,9 +221,9 @@ python3 /LlamaAgentHermes/mcp/smoke_test.py
 
 ---
 
-### 7. Production Daemon (PM2)
+### 7. Run with PM2 (Background Daemon)
 
-Start the bot in the background using PM2:
+Start the bot with PM2 so it stays online:
 
 ```bash
 pm2 start index.js --name llama-hermes
@@ -285,75 +231,89 @@ pm2 save
 pm2 startup
 ```
 
-Useful management commands:
+Useful PM2 commands:
 
 ```bash
-# View live status
+# Check status
 pm2 status
 
-# View non-streaming logs
-pm2 logs llama-hermes --nostream --lines 50
+# View logs without freezing the terminal
+pm2 logs llama-hermes --nostream --lines 40
 
-# Restart bot process
+# Restart bot
 pm2 restart llama-hermes
-
-# Stop bot process
-pm2 stop llama-hermes
 ```
 
 ---
 
-## Noppo Assistant (AI Agent Engine)
+## Using the Agentic Assistant (Noppo)
 
-### Triggering the Agent
-- **Direct Mention**: Mention `@bot` in any group where the bot is a member:
-  ```text
-  @bot Analyze this repository structure and give me a summary.
-  ```
-- **Explicit Command**:
-  ```text
-  /noppo What are the open security vulnerabilities on this host?
-  ```
-- **Quoted Messages**: Reply to any message (text or image) and mention `@bot` to use the quoted message as context.
+You can interact with the agent in any chat where the bot is present:
 
-### Session & Model Controls
-- `/noppo new`: Reset the conversation context and start a clean session.
-- `/noppo model <index|id>`: Switch the active model for the current chat session.
-- `/noppo models`: Display all registered models with their vision and context specifications.
-- `/noppo status`: Show active execution state, runtime token usage, and session IDs.
-- `/noppo stop`: Safely cancel the currently executing turn.
+- **Direct Mention**: Mention the bot with a prompt:
+  ```text
+  @bot Analyze why our payment webhook timed out and check recent logs.
+  ```
+- **Command Prefix**:
+  ```text
+  /noppo Search for the latest security advisories regarding OpenSSH.
+  ```
+- **Quoted Context**: Reply to any message or image and mention `@bot` to ask questions about it.
+
+### Agent Commands
+- `/noppo new`: Clear conversation memory and start a fresh session.
+- `/noppo model`: List available LLM models and switch between them.
+- `/noppo status`: Check active turn status, session IDs, and token usage.
+- `/noppo stop`: Gracefully stop the currently running agent turn.
 
 ---
 
-## Command Reference
+## WhatsApp MCP Server (`wa_control`)
 
-| Command | Permission | Description |
-|---|---|---|
-| `/menu` | Public | Displays all available commands grouped by category. |
-| `/noppo <prompt>` | Public / Owner | Dispatches a task to the Hermes autonomous AI engine. |
-| `/noppo new` | Public / Owner | Clears conversation memory and creates a fresh agent session. |
-| `/noppo model` | Public / Owner | Switches the active language model for the current chat. |
-| `/antilink on\|off` | Group Admin | Automatically deletes invite links and warns/kicks violators. |
-| `/antiforward on\|off` | Group Admin | Deletes messages forwarded from WhatsApp Channels/Newsletters. |
-| `/closegroup <time>` | Group Admin | Closes group chat permissions according to a set schedule. |
-| `/exec <command>` | Creator | Executes arbitrary bash commands directly on the host VPS. |
-| `/addown <number>` | Creator | Adds a new user number to the owner authorization list. |
-| `/modebot <mode>` | Creator | Toggles bot mode: `public`, `self` (private only), or `self2` (silent). |
-| `/uptime` | Public | Shows host uptime, memory usage, and process statistics. |
-| `/hd` | Public | Enhances image resolution using media processing tools. |
+The bundled WhatsApp MCP server exposes actions to the agent:
+
+| Tool Name | Description |
+|---|---|
+| `wa_message_thread` | Reads quoted message chains and context around a specific message. |
+| `wa_message_recent` | Retrieves recent messages from a chat to understand ongoing discussions. |
+| `wa_message_search` | Searches cached messages in a chat by keyword, sender, or media name. |
+| `wa_message_fetch` | Requests older historical messages on demand directly from WhatsApp. |
+| `wa_group_list` | Lists groups joined by the bot with metadata and admin status. |
+| `wa_group_info` | Inspects detailed group settings, description, and member counts. |
+| `wa_group_setting` | Toggles group settings (e.g. restrict announcement-only mode). |
+| `send_document` | Dispatches generated documents (code, logs, archives) to the owner's private chat. |
 
 ---
 
-## Plugin Architecture
+## General Bot Features & Commands
 
-All custom features live in `plugins/**/*.js`. Every plugin exports metadata, permissions, and handler functions:
+Besides the AI agent, the bot includes general utilities:
+
+- **Group Moderation**:
+  - `/antilink on|off`: Automatically deletes group invite links.
+  - `/antiforward on|off`: Blocks broadcast/channel forwarded messages.
+  - `/closegroup <time>`: Schedules opening and closing of group chat permissions.
+- **Administration**:
+  - `/exec <bash>`: Runs terminal commands (restricted strictly to owner numbers).
+  - `/modebot public|self|self2`: Changes bot mode (`self` = private only, `self2` = silent moderation).
+  - `/addown <number>`: Adds an owner number.
+  - `/uptime`: Displays VPS uptime and system memory stats.
+- **Media Utilities**:
+  - `/hd`: Enhances image resolution.
+  - Media Store: Saves media attachments sent in groups into an indexed media archive.
+
+---
+
+## Plugin System & Hot Reload
+
+New commands or event listeners are placed in `plugins/`:
 
 ```javascript
 module.exports = {
     name: 'ping',
     command: ['ping', 'p'],
     category: 'main',
-    description: 'Check bot responsiveness',
+    description: 'Check bot latency',
     owner: false,
     group: false,
     admin: false,
@@ -365,99 +325,40 @@ module.exports = {
 };
 ```
 
-### Hot Reloading
-The runtime continuously watches `plugins/`. When you create, modify, or remove any file inside `plugins/`, the bot detects changes and reloads the modules in **under 100ms** without dropping WebSocket connections.
+Any changes made inside `plugins/` take effect in **under 100ms** automatically without restarting the bot.
 
 ---
 
-## Control API & Outbound Bridge
+## Testing & Verification
 
-### Internal Control API (`http://127.0.0.1:5685`)
-Used by internal scripts and MCP tools:
-- `GET /health`: Health status and WebSocket connectivity check.
-- `GET /groups`: Lists all joined groups, participant counts, and admin statuses.
-- `POST /group/action`: Executes group management actions (`leave`, `invite`, `members`, `rename`, `setting`).
-- `POST /send-document`: Dispatches generated files and documents directly to the owner's private chat.
-
-### Media Outbound Bridge (`http://0.0.0.0:5680`)
-Exposes HTTP endpoints for external tools to dispatch media, images, and text payloads directly to WhatsApp recipients using authenticated API tokens.
-
----
-
-## Directory Structure
-
-```text
-/LlamaAgentHermes
-├── control/                     # Bot global configurations and tokens
-│   ├── settings.js              # Owner numbers, prefix, bot identity
-│   └── control_token            # Ephemeral token for internal control API
-├── hermes_plugins/              # Python plugins integrated into Hermes
-├── Hermes-kit/                  # Standalone bundle of agent SOUL.md & instructions
-│   └── SOUL.md                  # Operating system prompt for Hermes Agent
-├── lib/                         # Core libraries and business logic
-│   ├── antiforward_store.js     # Storage for channel forwarding exemptions
-│   ├── group_control_api.js     # Fastify/HTTP internal control API server
-│   ├── media_store.js           # Deduplicated SHA-256 media storage engine
-│   ├── message_cache.js         # In-memory rolling message buffer
-│   ├── noppo_commands.js        # Command handler & streaming dispatcher
-│   ├── noppo_config.js          # Model configurations & provider endpoints
-│   ├── noppo_context.js         # Prompt builder & quoted message assembler
-│   ├── noppo_delivery.js        # WhatsApp streaming edit serializer
-│   ├── noppo_hermes.js          # Hermes process spawner & stream-json parser
-│   └── noppo_sessions.js        # Session persistence and model binding
-├── mcp/                         # Model Context Protocol servers
-│   ├── smoke_test.py            # Automated MCP server health check
-│   └── wa_control_server.py     # Python FastMCP server for WhatsApp actions
-├── plugins/                     # Hot-reloading user plugins
-│   ├── grup/                    # Group moderation (antilink, antiforward, etc.)
-│   ├── main/                    # General commands (menu, owner, info)
-│   ├── owner/                   # Admin tools (exec, addown, modebot)
-│   └── tools/                   # Utility tools (media cache, crm, upscale)
-├── test/                        # Node.js native test suites (13 suites)
-├── index.js                     # Main application entry point
-├── package.json                 # Project dependencies and metadata
-└── stenly.js                    # Message router & event distributor
-```
-
----
-
-## Verification & Testing
-
-The project includes 13 test suites testing Baileys protocol normalization, message cache retention, thread reconstruction, anti-forward rules, and Hermes JSONL streaming.
-
-Run the test suite:
+The repository includes 13 Node.js test suites testing Baileys protocol normalization, message cache, anti-forward logic, and Hermes streaming:
 
 ```bash
 node --test test/*.test.js
 ```
 
-Expected output:
+All 13 test suites should pass cleanly:
 
 ```text
 ℹ tests 13
 ℹ suites 0
 ℹ pass 13
 ℹ fail 0
-ℹ cancelled 0
-ℹ skipped 0
-ℹ todo 0
 ```
 
 ---
 
-## Security & Operational Best Practices
+## Security & Operational Notes
 
-1. **Keep Tokens & Sessions Private**: Never commit `session/`, `noppo.env`, or `control/control_token` to version control. The included `.gitignore` protects these automatically.
-2. **Document Routing Safeguard**: The system prevents Hermes from sending raw documents, archives, or sensitive files (`.zip`, `.sql`, `.env`) to public groups. All document deliveries default to the verified owner's private chat via `POST /send-document`.
-3. **Restricted Shell Execution**: The `/exec` plugin is restricted strictly to numbers listed in `global.owner` and verified against sender JID and LID.
-4. **PM2 Process Guard**: `SOUL.md` contains strict instructions preventing the agent from terminating or restarting the PM2 daemon (`llama-hermes`), which would drop the active WhatsApp socket.
+- **Credential Safety**: Authentication tokens and WhatsApp sessions are kept in `session/` and `control/control_token`. The `.gitignore` prevents them from being committed.
+- **Document Routing Guard**: The agent's instructions prevent it from posting raw documents, archives, or sensitive files into public groups; file deliveries default to the owner's private chat.
+- **Owner Verification**: Sensitive commands (`/exec`, `/modebot`, `/addown`) verify the sender's phone number and LID against `global.owner` before executing.
 
 ---
 
-## License & Authors
+## License & Credits
 
-Distributed under the **MIT License**. See `LICENSE` for more information.
-
+- **License**: MIT
 - **Author**: Stenly Christian ([@glarceny](https://github.com/glarceny))
-- **Engine**: Powered by [Nous Research Hermes](https://github.com/NousResearch/Hermes-Agent) & [Baileys](https://github.com/itsliaaa/baileys)
+- **Core Libraries**: [@itsliaaa/baileys](https://github.com/itsliaaa/baileys) & [Nous Research Hermes](https://github.com/NousResearch/Hermes-Agent)
 EOF
