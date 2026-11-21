@@ -1,0 +1,15 @@
+name: wa_media
+version: 1.0.0
+description: "Kirim media ke chat WhatsApp yang menjalankan sesi ini: gambar, video, dokumen, voice note, dan sticker. Menyalurkan ke WhatsApp outbound bridge lokal (127.0.0.1:5680) milik bot Stenly/Noppo, jadi agent bisa mengirim screenshot hasil kerja tanpa tool terpisah."
+author: Noppo
+kind: standalone
+platforms:
+  - linux
+provides_tools:
+  - wa_send_image
+  - wa_send_video
+  - wa_send_document
+  - wa_send_voice
+  - wa_send_sticker
+  - wa_send_media
+  - wa_media_status

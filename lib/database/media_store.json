@@ -1,0 +1,71 @@
+{
+  "_v": 1,
+  "updatedAt": "2026-11-18T16:25:48.138Z",
+  "items": {
+    "a1544f1cb9163991b99ccc6b83fd54fb01b2d9f8762af16c81ca0a702963790e": {
+      "sha256": "a1544f1cb9163991b99ccc6b83fd54fb01b2d9f8762af16c81ca0a702963790e",
+      "file": "a1544f1c_xhs-bangroup.zip",
+      "kind": "document",
+      "fileName": "xhs-bangroup.zip",
+      "mimetype": "application/zip",
+      "bytes": 395854,
+      "width": null,
+      "height": null,
+      "seconds": null,
+      "pageCount": null,
+      "animated": null,
+      "caption": null,
+      "tags": [
+        "malware",
+        "story-stealer",
+        "jangan-dijalankan"
+      ],
+      "note": null,
+      "source": {
+        "chat": "120363405197851405@g.us",
+        "chatType": "group",
+        "messageId": "A52E432DF9E6749CB1BA65CD7FDFA1AA",
+        "time": "2026-11-16 10:58:55 WIB",
+        "sender": "258192697225241@lid",
+        "senderNumber": "258192697225241",
+        "pushName": "Mynfkua",
+        "fromMe": false,
+        "type": "documentMessage"
+      },
+      "refs": 1,
+      "savedAt": "2026-11-16T03:59:09.899Z"
+    },
+    "bfa7bce624c748a849c601566e5f9abdea52e1b771fb8f80284f57f4211828da": {
+      "sha256": "bfa7bce624c748a849c601566e5f9abdea52e1b771fb8f80284f57f4211828da",
+      "file": "bfa7bce6_Php_native-main_2_api.zip",
+      "kind": "document",
+      "fileName": "Php_native-main_2_api.zip",
+      "mimetype": "application/zip",
+      "bytes": 264583,
+      "width": null,
+      "height": null,
+      "seconds": null,
+      "pageCount": null,
+      "animated": null,
+      "viewOnce": false,
+      "caption": "Ini proyek apa nop",
+      "tags": [
+        "project-inspection"
+      ],
+      "note": "User asks identify this project; inspect archive listing only, do not execute.",
+      "source": {
+        "chat": "120363412758561257@g.us",
+        "chatType": "group",
+        "messageId": "A52EBB37BB1B935644F6765A89533A3E",
+        "time": "2026-11-18 23:25:00 WIB",
+        "sender": "124159669596406@lid",
+        "senderNumber": "124159669596406",
+        "pushName": "Stenly Christian",
+        "fromMe": false,
+        "type": "documentMessage"
+      },
+      "refs": 1,
+      "savedAt": "2026-11-18T16:25:48.138Z"
+    }
+  }
+}

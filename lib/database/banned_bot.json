@@ -1,0 +1,23 @@
+{
+  "_v": 1,
+  "banned_users": [
+    {
+      "jid": "6285191522197@s.whatsapp.net",
+      "number": "6285191522197",
+      "lid": "218318019518533@lid",
+      "lid_number": "218318019518533",
+      "banned_at": "2026-10-30T08:14:39.765Z",
+      "banned_by": "29335515852806@lid",
+      "reason": "Permanent total bot ban by owner"
+    },
+    {
+      "jid": "6285753425061@s.whatsapp.net",
+      "number": "6285753425061",
+      "lid": "235528121241781@lid",
+      "lid_number": "235528121241781",
+      "banned_at": "2026-10-30T08:18:17.691Z",
+      "banned_by": "29335515852806@lid",
+      "reason": "Permanent total bot ban by owner"
+    }
+  ]
+}
