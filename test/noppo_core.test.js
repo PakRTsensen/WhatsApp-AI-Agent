@@ -33,7 +33,7 @@ assert.equal(routing.isShortStatusQuestion('sudah selesai?'), true);
 assert.equal(routing.isShortStatusQuestion('Sempurnakan scraper AniBiPlay dan tambahkan HLS'), false);
 
 assert.equal(routing.shouldTrigger({ isOwner: false, isPrivate: true, text: 'nop' }), false);
-assert.equal(routing.shouldTrigger({ isOwner: true, isPrivate: true, text: 'hai' }), false);
+assert.equal(routing.shouldTrigger({ isOwner: true, isPrivate: true, text: 'hai' }), true);
 assert.equal(routing.shouldTrigger({ isOwner: true, isPrivate: false, isReplyToBot: true, text: 'lanjut' }), true);
 assert.equal(routing.shouldTrigger({ isOwner: true, isPrivate: false, isMentionToBot: true, text: 'halo' }), true);
 assert.equal(routing.shouldTrigger({ isOwner: true, isPrivate: false, text: 'noppo bantu' }), true);
