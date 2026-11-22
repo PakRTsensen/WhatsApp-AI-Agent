@@ -148,13 +148,14 @@ Models are registered in `lib/noppo_config.js`. Each entry has:
 
 `getEngineModel()` prefixes the provider from `NOPPO_ENGINE_PROVIDER`, so
 `ca/deepseek-v4-1-flash-1017` becomes
-`9router/ca/deepseek-v4-1-flash-1017` for `opencode run --model`.
+`9router/ca/deepseek-v4-1-flash-1017#max` for `opencode run --model`, selecting
+DeepSeek's maximum reasoning-effort variant by default.
 
 Defaults on this machine:
 
 | Shown name | Engine model | Context | Vision |
 |---|---|---|---|
-| DeepSeek V4.1 Flash 1017 (default) | `9router/ca/deepseek-v4-1-flash-1017` | 1,000,000 | no |
+| DeepSeek V4.1 Flash 1017 (default) | `9router/ca/deepseek-v4-1-flash-1017#max` | 1,000,000 | no |
 | GPT Luna 6 1M | `9router/ca/gpt-6-luna` | 1,050,000 | yes |
 | HY4 Flash Free 1M | `9router/ca/hy4` | 200,000 | no |
 

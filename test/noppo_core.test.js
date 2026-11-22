@@ -21,8 +21,9 @@ assert.equal(config.getModel('re/opencode/hy4-flash-free').contextWindow, 200000
 assert.equal(config.getModel('re/opencode/hy4-flash-free').maxInputTokens, 200000);
 assert.equal(config.getModel('re/opencode/hy4-flash-free').maxOutputTokens, 64000);
 assert.equal(config.getModel().engineModel, 'ca/deepseek-v4-1-flash-1017');
-assert.equal(config.getEngineModel(), '9router/ca/deepseek-v4-1-flash-1017');
+assert.equal(config.getEngineModel(), '9router/ca/deepseek-v4-1-flash-1017#max');
 assert.equal(config.getEngineModel('cx/gpt-6-luna[1m]'), '9router/ca/gpt-6-luna');
+assert.equal(config.getEngineModel('re/opencode/hy4-flash-free'), '9router/ca/hy4');
 assert.equal(config.getModel('unknown'), null);
 
 assert.deepEqual(routing.parseCommand('/noppo new'), ['new']);
