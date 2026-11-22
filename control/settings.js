@@ -1,16 +1,22 @@
-global.namaown = "Stenly WhatsApp BotSimple"
-global.prefix = "/"
-global.botname = "Stenly WhatsApp Bot"
+const ownerFromEnv = String(process.env.BOT_OWNER_NUMBERS || '')
+    .split(',')
+    .map(value => value.replace(/\D/g, ''))
+    .filter(Boolean);
+
+global.namaown = process.env.BOT_DISPLAY_NAME || "Stenly WhatsApp BotSimple"
+global.prefix = process.env.BOT_PREFIX || "/"
+global.botname = process.env.BOT_NAME || "Stenly WhatsApp Bot"
 global.botversion = "v1.0"
-global.botdev = "Stenly Christian"
+global.botdev = process.env.BOT_DEVELOPER || "Stenly Christian"
 global.botcategory = 1
 global.totalcmd = 8
-global.owner = ["6285199430173", "6285881325696"]
+global.owner = ownerFromEnv
+global.botNumber = String(process.env.BOT_NUMBER || '').replace(/\D/g, '')
 global.session = "sessions"
 
 global.samp = {
     domain: "https://publik.pterokudesu.web.id",
-    pltc: "ptlc_a7a4p8zEf3vjLAi6W0svUhTpIKVLXnha09WW6ai303v",
+    pltc: process.env.SAMP_PANEL_TOKEN || "",
     serverId: "c770e261",
     path: "/scriptfiles/whitelist/",
     extension: ".txt",

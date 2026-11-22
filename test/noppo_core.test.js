@@ -11,15 +11,18 @@ const wa = require('../lib/noppo_whatsapp');
 
 async function main() {
 assert.equal(config.DEFAULT_MODEL_ID, 'dco/deepseek-ai/DeepSeek-V4.1-Flash-1017');
-assert.equal(config.getModel().contextWindow, 256000);
-assert.equal(config.getModel().maxOutputTokens, null);
-assert.equal(config.getModel('cx/gpt-6-luna[1m]').contextWindow, 872000, 'model lama tetap terdaftar');
-assert.equal(config.getModel('dco/deepseek-ai/DeepSeek-V4.1-Flash-1017').contextWindow, 256000);
-assert.equal(config.getModel('dco/deepseek-ai/DeepSeek-V4.1-Flash-1017').maxInputTokens, 256000);
-assert.equal(config.getModel('dco/deepseek-ai/DeepSeek-V4.1-Flash-1017').maxOutputTokens, null);
-assert.equal(config.getModel('re/opencode/hy4-flash-free').contextWindow, 1000000);
-assert.equal(config.getModel('re/opencode/hy4-flash-free').maxInputTokens, 1000000);
+assert.equal(config.getModel().contextWindow, 1000000);
+assert.equal(config.getModel().maxOutputTokens, 384000);
+assert.equal(config.getModel('cx/gpt-6-luna[1m]').contextWindow, 1050000, 'model lama tetap terdaftar');
+assert.equal(config.getModel('dco/deepseek-ai/DeepSeek-V4.1-Flash-1017').contextWindow, 1000000);
+assert.equal(config.getModel('dco/deepseek-ai/DeepSeek-V4.1-Flash-1017').maxInputTokens, 1000000);
+assert.equal(config.getModel('dco/deepseek-ai/DeepSeek-V4.1-Flash-1017').maxOutputTokens, 384000);
+assert.equal(config.getModel('re/opencode/hy4-flash-free').contextWindow, 200000);
+assert.equal(config.getModel('re/opencode/hy4-flash-free').maxInputTokens, 200000);
 assert.equal(config.getModel('re/opencode/hy4-flash-free').maxOutputTokens, 64000);
+assert.equal(config.getModel().engineModel, 'ca/deepseek-v4-1-flash-1017');
+assert.equal(config.getEngineModel(), '9router/ca/deepseek-v4-1-flash-1017');
+assert.equal(config.getEngineModel('cx/gpt-6-luna[1m]'), '9router/ca/gpt-6-luna');
 assert.equal(config.getModel('unknown'), null);
 
 assert.deepEqual(routing.parseCommand('/noppo new'), ['new']);
@@ -52,7 +55,7 @@ const first = sessions.createSession('chat-A', { modelId: config.DEFAULT_MODEL_I
 const second = sessions.createSession('chat-B', { modelId: config.DEFAULT_MODEL_ID });
 assert.notEqual(first.id, second.id);
 assert.equal(sessions.getActiveSession('chat-A').id, first.id);
-assert.equal(first.launchPolicy.maxTurns, 0, 'new Noppo sessions should default to unlimited Hermes tool iterations');
+assert.equal(first.engineSessionId, null, 'new Noppo sessions start without an engine session');
 assert.equal(sessions.getActiveSession('chat-B').id, second.id);
 assert.equal(sessions.setSessionModel(first.id, 'dco/deepseek-ai/DeepSeek-V4.1-Flash-1017').modelId,
     'dco/deepseek-ai/DeepSeek-V4.1-Flash-1017');

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "wa_control": {
+        "type": "local",
+        "command": [
+          "./mcp/run-wa-control.sh"
+        ],
+        "codemode": false,
+        "environment": {
+          "WA_CONTROL_URL": "http://127.0.0.1:5685"
+        }
+      }
+    }
+  }
+}

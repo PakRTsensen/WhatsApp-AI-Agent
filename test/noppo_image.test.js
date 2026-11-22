@@ -12,8 +12,8 @@ const Sessions = require('../lib/noppo_sessions');
 const Context = require('../lib/noppo_context');
 const Vision = require('../lib/noppo_vision');
 
-const IMAGE_MODEL = 'dco/deepseek-ai/DeepSeek-V4.1-Flash-1017';
-const TEXT_MODEL = 'cx/gpt-6-luna[1m]';
+const IMAGE_MODEL = 'cx/gpt-6-luna[1m]';
+const TEXT_MODEL = 'dco/deepseek-ai/DeepSeek-V4.1-Flash-1017';
 
 function fakeImageMessage(overrides = {}) {
     return { mimetype: 'image/png', url: 'https://example.invalid/a.enc', ...overrides };
@@ -103,7 +103,7 @@ function fakeImageMessage(overrides = {}) {
     assert.equal(analysis, 'Angka 7429, lingkaran merah.');
     assert.equal(seen.length, 1);
     assert.equal(seen[0].url, 'https://example.invalid/v1/chat/completions');
-    assert.equal(seen[0].body.model, IMAGE_MODEL);
+    assert.equal(seen[0].body.model, 'ca/gpt-6-luna');
     const parts = seen[0].body.messages[0].content;
     assert.equal(parts[0].type, 'text');
     assert.equal(parts[1].type, 'image_url');

@@ -8,11 +8,11 @@ const path = require('node:path');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'noppo-e2e-'));
 process.env.NOPPO_SESSION_STORE = path.join(tmp, 'sessions.json');
 process.env.NOPPO_ROUTER_API_KEY = 'fixture-key';
-process.env.NOPPO_TEST_HERMES_BINARY = path.join(__dirname, 'fixtures', 'noppo-hermes-fake.sh');
+process.env.NOPPO_TEST_OPENCODE_BINARY = path.join(__dirname, 'fixtures', 'noppo-opencode-fake.js');
 process.env.NOPPO_FAKE_MODE = 'success';
 
 const Sessions = require('../lib/noppo_sessions');
-const Engine = require('../lib/noppo_hermes');
+const Engine = require('../lib/noppo_opencode');
 const { makeWhatsAppRenderer, toolStatus } = require('../lib/noppo_delivery');
 
 async function main() {
@@ -45,7 +45,7 @@ async function main() {
     assert.ok(sent.slice(1).every(item => item.content.edit?.id === 'one-wa-message'));
     assert.equal(sent.at(-1).content.text, 'Noppo selesai: Inspect project');
     assert.equal(Sessions.getSession(session.id).status, 'idle');
-    console.log(`PASS: fake Hermes tools+stream -> one WhatsApp message, ${sent.length - 1} edits, final response`);
+    console.log(`PASS: fake OpenCode tools+stream -> one WhatsApp message, ${sent.length - 1} edits, final response`);
 }
 
 main().catch(error => { console.error(error); process.exitCode = 1; })

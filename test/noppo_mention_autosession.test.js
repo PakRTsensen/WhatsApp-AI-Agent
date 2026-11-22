@@ -11,7 +11,7 @@ const path = require('node:path');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'noppo-mention-'));
 process.env.NOPPO_SESSION_STORE = path.join(tmp, 'sessions.json');
 process.env.NOPPO_ROUTER_API_KEY = 'fixture-key';
-process.env.NOPPO_TEST_HERMES_BINARY = path.join(__dirname, 'fixtures', 'noppo-hermes-fake.sh');
+process.env.NOPPO_TEST_OPENCODE_BINARY = path.join(__dirname, 'fixtures', 'noppo-opencode-fake.js');
 process.env.NOPPO_FAKE_MODE = 'success';
 
 const Sessions = require('../lib/noppo_sessions');

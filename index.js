@@ -1,3 +1,4 @@
+require('./lib/load_env');
 require('./control/settings');
 const {
 default: makeWASocket,
@@ -11,6 +12,7 @@ downloadContentFromMessage,
 makeCacheableSignalKeyStore
 } = require("@itsliaaa/baileys");
 const pino = require('pino');
+const qrcode = require('qrcode-terminal');
 const readline = require("readline");
 const fs = require('fs');
 const chalk = require("chalk");
@@ -23,7 +25,10 @@ process.on('uncaughtException', (err) => {
     console.error('[UNCAUGHT EXCEPTION]', err?.message || err);
 });
 
-const usePairingCode = true;
+const usePairingCode = Boolean(process.env.PAIRING_NUMBER || process.argv[2]);
+if (!Array.isArray(global.owner) || !global.owner.length) {
+    console.log('[WA] BOT_OWNER_NUMBERS belum diisi; hanya akun bot sendiri yang dianggap owner sampai diisi.');
+}
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 const question = (text) => new Promise(resolve => rl.question(text, resolve));
@@ -106,12 +111,13 @@ store.bind(sock.ev);
 
 globalThis.__waStore = store;
 
-if (usePairingCode && !sock.authState.creds.registered) {
+const pairingNumberConfigured = usePairingCode;
+if (usePairingCode && pairingNumberConfigured && !sock.authState.creds.registered) {
     let pairingRequested = false;
     const requestCode = async () => {
         if (pairingRequested || sock.authState.creds.registered) return;
         try {
-            const rawNumber = process.env.PAIRING_NUMBER || process.argv[2] || global.botNumber || '6283167054726';
+            const rawNumber = process.env.PAIRING_NUMBER || process.argv[2] || global.botNumber;
             const phoneNumber = String(rawNumber).replace(/[^0-9]/g, '');
             if (!phoneNumber) {
                 console.log(chalk.red("Nomor WhatsApp tidak ditemukan untuk pairing code!"));
@@ -238,7 +244,17 @@ try {
 sock.public = true
 
 sock.ev.on('connection.update', async ({ connection, lastDisconnect, qr }) => {
-if (qr) console.log(chalk.yellow("[WA] QR diterima (scan untuk pairing ulang)."));
+if (qr) {
+    console.log(chalk.yellow("[WA] Scan QR berikut di WhatsApp > Perangkat Tertaut > Tautkan Perangkat."));
+    qrcode.generate(qr, { small: true }, code => {
+        process.stdout.write(`${code}\n`);
+        try {
+            fs.mkdirSync('./logs', { recursive: true });
+            fs.writeFileSync('./logs/wa-qr.txt', `${code}\n`, { mode: 0o600 });
+            console.log(chalk.yellow("[WA] QR bersih juga ditulis ke logs/wa-qr.txt (refresh otomatis)."));
+        } catch (_) {}
+    });
+}
 if (connection === 'connecting') console.log(chalk.cyan("[WA] Menghubungkan ke WhatsApp..."));
 if (connection === 'open') {
 console.log(chalk.green("==> BOT BERHASIL TERHUBUNG KE WHATSAPP! <=="));

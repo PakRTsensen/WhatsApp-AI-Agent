@@ -1,3 +1,4 @@
+require('./lib/load_env');
 require('./control/settings');
 const fs = require('fs');
 const sharp = require('sharp');

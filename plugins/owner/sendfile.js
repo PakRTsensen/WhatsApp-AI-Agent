@@ -4,8 +4,8 @@ const { generateWAMessageFromContent } = require("@itsliaaa/baileys");
 
 const ALIAS = {};
 
-const ALLOWED_DIRS = ["/root", "/LlamaAgentHermes"];
-const BLOCKED_PARTS = ["/session", "/session_backup_", "/.pm2/", "/.hermes/state.db"];
+const ALLOWED_DIRS = [process.env.HOME || "/root", path.join(__dirname, "..", "..")];
+const BLOCKED_PARTS = ["/session", "/session_backup_", "/.pm2/", "/control/noppo.env", "/control/control_token"];
 const MAX_BYTES = 15 * 1024 * 1024;
 
 function menuReply(sock, m, ctx, title, lines) {
@@ -44,7 +44,7 @@ function resolveTarget(arg) {
     const clean = String(arg).trim();
     if (ALIAS[clean]) return ALIAS[clean];
     const p = path.resolve(clean);
-    if (!ALLOWED_DIRS.some(d => p === d || p.startsWith(d + "/"))) return { err: "Path di luar area izin (/root, /LlamaAgentHermes)." };
+    if (!ALLOWED_DIRS.some(d => p === d || p.startsWith(d + "/"))) return { err: `Path di luar area izin (${ALLOWED_DIRS.join(", ")}).` };
     if (BLOCKED_PARTS.some(b => p.includes(b))) return { err: "Path kredensial/session diblokir." };
     if (path.extname(p).toLowerCase() !== ".js") return { err: "Hanya file .js yang boleh dikirim." };
     return p;

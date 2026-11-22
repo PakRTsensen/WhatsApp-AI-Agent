@@ -1,470 +1,298 @@
-# WhatsApp-AI-Agent
+# WhatsApp-AI-Agent (Noppo)
 
-<p align="center">
-  <img src="docs/architecture.png" alt="WhatsApp-AI-Agent Architecture" width="100%">
-</p>
+A personal WhatsApp assistant and group-control bot. The WhatsApp layer runs on
+[Baileys](https://github.com/itsliaaa/baileys); the agent runtime is
+[OpenCode](https://opencode.ai). There is no Hermes dependency.
 
-A WhatsApp bot designed primarily around an **autonomous agentic assistant** (powered by **Node.js + Baileys** and **Nous Hermes Agent CLI**), complemented with general WhatsApp bot utilities and automated group moderation.
+Noppo can inspect the host, edit files, run tests, control groups, search the
+message cache, and archive or resend media. The owner talks to it in a private
+chat or by mentioning it in a group.
 
-Instead of operating as a traditional prompt-response chatbot, this bot runs an agentic execution loop capable of multi-step reasoning, self-correction, and tool execution. It comes bundled with a dedicated **WhatsApp Model Context Protocol (MCP) Server**, allowing the AI agent to inspect chat context, read quoted message chains, administer groups, and safely dispatch files back to WhatsApp.
-
----
-
-## Table of Contents
-
-- [Overview & Capabilities](#overview--capabilities)
-- [System Requirements](#system-requirements)
-- [Complete Setup Tutorial (Zero to Running)](#complete-setup-tutorial-zero-to-running)
-  - [1. Server Prerequisites](#1-server-prerequisites)
-  - [2. Clone & Install Dependencies](#2-clone--install-dependencies)
-  - [3. Install Hermes Agent CLI](#3-install-hermes-agent-cli)
-  - [4. Basic Configuration](#4-basic-configuration)
-  - [5. Link WhatsApp via Pairing Code](#5-link-whatsapp-via-pairing-code)
-  - [6. Register the WhatsApp MCP Server](#6-register-the-whatsapp-mcp-server)
-  - [7. Run with PM2 (Background Daemon)](#7-run-with-pm2-background-daemon)
-- [Tutorial: Changing and Adding AI Models](#tutorial-changing-and-adding-ai-models)
-  - [Configuring Providers & Models (`noppo_config.js`)](#configuring-providers--models-noppo_configjs)
-  - [Switching Models Directly in WhatsApp](#switching-models-directly-in-whatsapp)
-  - [Using Alternative Providers (OpenRouter, Groq, Ollama, etc.)](#using-alternative-providers-openrouter-groq-ollama-etc)
-- [Model Context Protocol (MCP) Toolsets](#model-context-protocol-mcp-toolsets)
-  - [Bundled: WhatsApp MCP Server (`wa_control`)](#bundled-whatsapp-mcp-server-wa_control)
-  - [Recommended External MCP Toolsets (from `SOUL.md`)](#recommended-external-mcp-toolsets-from-soulmd)
-  - [Customizing or Disabling MCPs in `SOUL.md`](#customizing-or-disabling-mcps-in-soulmd)
-- [Using the Agentic Assistant (Noppo)](#using-the-agentic-assistant-noppo)
-- [General Bot Commands & Features](#general-bot-commands--features)
-  - [Group Moderation](#group-moderation)
-  - [Bot Administration](#bot-administration)
-  - [Media & Utility Tools](#media--utility-tools)
-- [Plugin Development & Hot Reload](#plugin-development--hot-reload)
-- [Operations & Troubleshooting](#operations--troubleshooting)
-  - [Monitoring Logs](#monitoring-logs)
-  - [Re-pairing or Resetting WhatsApp Session](#re-pairing-or-resetting-whatsapp-session)
-  - [Running the Test Suites](#running-the-test-suites)
-- [Security & Privacy Guardrails](#security--privacy-guardrails)
-- [License & Credits](#license--credits)
-
----
-
-## Overview & Capabilities
-
-1. **Agentic WhatsApp Assistant**:
-   - Mention `@bot` or use `/noppo <prompt>` to assign multi-step tasks.
-   - Hermes Agent plans, executes shell commands, analyzes files, browses websites, and performs multi-tool chains autonomously.
-   - **Live Streaming Edits**: Responses stream into WhatsApp by editing a single message every 900ms, providing clean real-time output without message spam.
-
-2. **Native WhatsApp Control via MCP**:
-   - The bundled `wa_control` MCP server gives the agent tools to inspect chat history, traverse replied message threads, list joined groups, and send files directly to the owner.
-
-3. **Multimodal Vision**:
-   - Extracts images from direct messages or quoted replies, saving them to secure temporary storage and passing them to vision-capable models.
-
-4. **Zero-Disk Chat Privacy**:
-   - Conversation history is buffered in memory (rolling 30-minute window, max 4 recent messages for prompt assembly). Private chat logs are not permanently stored on disk.
-
-5. **General Bot Utilities**:
-   - Automated group moderation: `antilink` (auto-delete link spam), `antiforward` (block forwarded channels), and `closegroup` (automated open/close schedules).
-   - Hot-reloadable modular plugin system (`plugins/**/*.js`).
-
----
-
-## System Requirements
-
-| Component | Minimum | Recommended | Notes |
-|---|---|---|---|
-| **CPU** | 2 vCPU cores | 4 vCPU cores | Needed for background Hermes agent processes |
-| **RAM** | 2 GB | 4 GB | 4 GB recommended if using headless Chrome or pentest tools |
-| **Storage** | 10 GB SSD | 20 GB SSD | For Node.js modules, Python venvs, and cache |
-| **OS** | Linux | Ubuntu 22.04 / 24.04 LTS or Debian 12 | Linux environment recommended |
-| **Node.js** | `>= 18.18.0` | Node.js 20 LTS or 22 LTS | Tested on Node 20 & 22 |
-| **Python** | `>= 3.10` | Python 3.11 or 3.12 | Required by the MCP server |
-
----
-
-## Complete Setup Tutorial (Zero to Running)
-
-### 1. Server Prerequisites
-
-Update your server and install required packages:
-
-```bash
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y curl wget git build-essential ffmpeg jq python3 python3-pip python3-venv
-```
-
-Install Node.js (v22 LTS) and PM2:
-
-```bash
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt install -y nodejs
-sudo npm install -g pm2
-```
-
----
-
-### 2. Clone & Install Dependencies
-
-Clone this repository and install Node.js packages:
-
-```bash
-git clone https://github.com/glarceny/WhatsApp-AI-Agent.git /LlamaAgentHermes
-cd /LlamaAgentHermes
-npm install
-```
-
----
-
-### 3. Install Hermes Agent CLI
-
-Install Hermes Agent CLI globally:
-
-```bash
-curl -fsSL https://hermes.nousresearch.com/install.sh | bash
-```
-
-Verify that `hermes` is installed:
-
-```bash
-hermes --version
-```
-
-Copy the bundled agent persona and rules into `/root/.hermes/SOUL.md`:
-
-```bash
-mkdir -p /root/.hermes
-cp /LlamaAgentHermes/Hermes-kit/SOUL.md /root/.hermes/SOUL.md
-```
-
-Create the API key file `/root/.hermes/noppo.env`:
-
-```bash
-cat << 'EOF' > /root/.hermes/noppo.env
-NOPPO_ROUTER_API_KEY=your_api_key_here
-EOF
-chmod 600 /root/.hermes/noppo.env
-```
-
----
-
-### 4. Basic Configuration
-
-#### Owner & Bot Identity
-Edit `control/settings.js` to set your owner numbers and prefix:
-
-```javascript
-global.namaown = "Your Name";
-global.prefix = "/";
-global.botname = "Noppo Agent";
-global.botversion = "v1.0";
-// Add owner numbers in international format without '+' or spaces:
-global.owner = ["6285199430173", "6285881325696"];
-```
-
----
-
-### 5. Link WhatsApp via Pairing Code
-
-Run the bot once interactively to connect your WhatsApp account:
-
-```bash
-PAIRING_NUMBER=6283167054726 node index.js
-```
-
-The terminal will output:
+## Architecture
 
 ```text
-=================================
-PAIRING CODE:  STENLYCL 
-=================================
-Buka WhatsApp > Perangkat Tertaut > Tautkan Perangkat > masukkan kode di atas.
+WhatsApp (Baileys)
+   │
+   ├── plugins/                  command + group plugins (hot reload)
+   ├── lib/noppo_*.js            routing, sessions, context, delivery, vision
+   ├── lib/noppo_opencode.js     spawns: opencode run --format json
+   │        │
+   │        └── OpenCode agent (.opencode/agents/noppo.md)
+   │                 │
+   │                 └── MCP: wa_control (Python, stdio)
+   │                          │
+   │                          └── HTTP control API 127.0.0.1:5685
+   └── control/settings.js       env-driven owner/bot identity
 ```
 
-1. Open **WhatsApp** on your phone.
-2. Tap **Settings** (or three dots) > **Linked Devices**.
-3. Select **Link a Device** > **Link with phone number instead**.
-4. Enter the pairing code shown in the console (`STENLYCL` or auto-generated code).
-5. Once logged in, press `Ctrl+C` to stop the interactive run.
+- OpenCode owns the model, tools, and agent loop.
+- `wa_control` calls the bot's local control API, so it never opens a second
+  WhatsApp session.
+- Plugins under `plugins/` are reloaded automatically when changed.
 
----
+## Requirements
 
-### 6. Register the WhatsApp MCP Server
+| Component | Version |
+|---|---|
+| Node.js | >= 20 |
+| npm | >= 10 |
+| Python | >= 3.10 |
+| OpenCode CLI | >= 2.3 |
+| PM2 | optional, for a background daemon |
+| WhatsApp | a number you can link |
 
-To enable the agent to access WhatsApp features, register `wa_control` in `/root/.hermes/config.yaml`:
+The OpenCode CLI must already have a provider configured that exposes the models
+listed in `lib/noppo_config.js`. On this machine the provider is `9router`
+(`http://127.0.0.1:20128/v1`).
 
-```yaml
-mcp_servers:
-  wa_control:
-    command: "/usr/bin/python3"
-    args:
-      - "/LlamaAgentHermes/mcp/wa_control_server.py"
-```
-
-Verify the MCP server health check:
+## Quick install
 
 ```bash
-python3 /LlamaAgentHermes/mcp/smoke_test.py
+git clone https://github.com/glarceny/WhatsApp-AI-Agent.git /opt/WhatsApp-AI-Agent
+cd /opt/WhatsApp-AI-Agent
+
+BOT_OWNER_NUMBERS=628xxxxxxxxxx \
+PAIRING_NUMBER=628xxxxxxxxxx \
+scripts/install.sh
 ```
 
----
+The installer:
 
-### 7. Run with PM2 (Background Daemon)
+1. checks Node, Python, and OpenCode;
+2. runs `npm install` (the repo `.npmrc` allows the required git dependency);
+3. creates `mcp/.venv` and installs the Python MCP SDK;
+4. writes `control/noppo.env` with mode `0600` (it reuses the local 9router
+   URL/key from `~/.config/opencode/opencode.json` when available);
+5. runs `npm test`.
 
-Start the bot in the background:
+Then start it:
 
 ```bash
-pm2 start index.js --name llama-hermes
+pm2 start ecosystem.config.js
 pm2 save
-pm2 startup
+pm2 logs noppo-agent --nostream
 ```
 
----
+On the first run you can pair either way:
 
-## Tutorial: Changing and Adding AI Models
+- **Pairing code**: set `PAIRING_NUMBER`; the log prints a code to enter in
+  WhatsApp → Linked devices → Link a device.
+- **QR code**: leave `PAIRING_NUMBER` empty; the bot prints a QR in the log and
+  writes a clean copy to `logs/wa-qr.txt` (refreshed automatically). Scan it
+  with WhatsApp → Linked devices.
 
-### Configuring Providers & Models (`noppo_config.js`)
+Once linked, the bot reconnects on its own after restarts.
 
-All model routing is managed in `lib/noppo_config.js`. The bot connects to any **OpenAI-compatible** endpoint (9Router, OpenRouter, Groq, Ollama, official OpenAI, etc.).
+### Non-interactive install
 
-```javascript
-module.exports = {
-    provider: {
-        baseUrl: process.env.NOPPO_ROUTER_URL || 'https://9router.stenly.id/v1',
-        apiKeyEnv: 'NOPPO_ROUTER_API_KEY',
-        credentialsFile: '/root/.hermes/noppo.env'
-    },
-    models: [
-        {
-            id: 'cx/gpt-6-luna[1m]',
-            name: 'GPT Luna 6 (1M Context)',
-            provider: 'openai',
-            supportsVision: true,
-            contextLength: 1000000
-        },
-        {
-            id: 'dco/deepseek-ai/DeepSeek-V4.1-Flash-1017',
-            name: 'DeepSeek V4.1 Flash',
-            provider: 'openai',
-            supportsVision: true,
-            contextLength: 64000
-        }
-    ],
-    defaultModelId: 'cx/gpt-6-luna[1m]'
-};
-```
-
-#### Adding a New Model
-To register a new model (e.g. `openai/gpt-4o` or `deepseek-chat`), simply append it to the `models` array:
-
-```javascript
-{
-    id: 'openai/gpt-4o',
-    name: 'GPT-4o Omnimodal',
-    provider: 'openai',
-    supportsVision: true,
-    contextLength: 128000
-}
-```
-
-Then update `NOPPO_ROUTER_API_KEY` in `/root/.hermes/noppo.env` if required.
-
-### Switching Models Directly in WhatsApp
-
-Users and owners can inspect and switch models on the fly without restarting the bot:
-
-1. **List Models**:
-   ```text
-   /noppo models
-   ```
-   Outputs the registered models along with their ID, vision support, and index number.
-
-2. **Switch Active Model**:
-   ```text
-   /noppo model 2
-   ```
-   or specify the model ID directly:
-   ```text
-   /noppo model dco/deepseek-ai/DeepSeek-V4.1-Flash-1017
-   ```
-   The bot persists your preference per chat session.
-
-3. **Toggle Vision Support for a Model**:
-   ```text
-   /noppo modelimage 1 off
-   ```
-
-### Using Alternative Providers (OpenRouter, Groq, Ollama, etc.)
-
-- **OpenRouter**: Set `baseUrl: 'https://openrouter.ai/api/v1'` and place your `sk-or-v1-...` key in `/root/.hermes/noppo.env`.
-- **Local Ollama**: Set `baseUrl: 'http://127.0.0.1:11434/v1'` and `NOPPO_ROUTER_API_KEY=ollama`.
-- **Official OpenAI**: Set `baseUrl: 'https://api.openai.com/v1'` and place your `sk-...` key in `/root/.hermes/noppo.env`.
-
----
-
-## Model Context Protocol (MCP) Toolsets
-
-The system uses the Model Context Protocol (MCP) to supply tools to the Hermes Agent.
-
-### Bundled: WhatsApp MCP Server (`wa_control`)
-
-The repository includes a ready-to-use Python MCP server at `mcp/wa_control_server.py`. It connects to the bot's internal control API (`127.0.0.1:5685`) and gives the agent these actions:
-
-| Tool | Parameters | Description |
-|---|---|---|
-| `wa_message_thread` | `chat`, `id` | Traverses replied message chains to understand conversation context. |
-| `wa_message_recent` | `chat`, `limit` | Reads recent chat messages to follow ongoing discussions. |
-| `wa_message_search` | `chat`, `query` | Searches message history by text, sender name, or media type. |
-| `wa_group_list` | None | Lists all joined WhatsApp groups, member counts, and admin statuses. |
-| `wa_group_info` | `chat` | Retrieves group metadata, description, and settings. |
-| `wa_group_setting` | `chat`, `setting` | Changes group settings (e.g. `announcement` mode). |
-| `send_document` | `file_path`, `to` | Sends a generated file/document safely to the owner's private chat. |
-
-### Recommended External MCP Toolsets (from `SOUL.md`)
-
-In `/root/.hermes/SOUL.md` (and `Hermes-kit/SOUL.md`), the agent is pre-configured to recognize optional external MCP toolsets if you wish to equip your bot with specialized tools:
-
-1. **`xposedornot`** (Free HTTP, keyless): Email & domain data breach lookups.
-2. **`openosint`** (Passive OSINT): DNS, WHOIS, RDAP, IP intelligence, and GitHub dorking.
-3. **`osint-tools`** (Identity OSINT): Sherlock, Holehe, Maigret, and TheHarvester.
-4. **`hexstrike`** (Local Infrastructure Scanner): Connects to localhost:8888 for security scanning.
-5. **`chrome-devtools`** (Browser Control): Headless Chrome DevTools Protocol automation (`npx chrome-devtools-mcp@1.12.0`).
-
-### Customizing or Disabling MCPs in `SOUL.md`
-
-> **Note**: External MCP servers are completely optional!
-
-If you only want the bot for general assistance and WhatsApp control:
-1. You only need `wa_control` configured in `/root/.hermes/config.yaml`.
-2. Open `/root/.hermes/SOUL.md` (and `Hermes-kit/SOUL.md`) in any text editor.
-3. Remove or comment out sections under `MCP SERVERS AKTIF` for tools you do not use.
-4. Hermes will automatically adapt and only use tools that are registered.
-
----
-
-## Using the Agentic Assistant (Noppo)
-
-### Interacting with the Agent
-- **In Groups**: Mention `@bot` followed by your request:
-  ```text
-  @bot Check why our API endpoint /v1/health returned status 502 earlier.
-  ```
-- **In Private Chat**: Send `/noppo <prompt>` or talk directly if configured.
-- **Replying to Context**: Quote any WhatsApp message (or image) and mention `@bot` to ask questions about it.
-
-### Agent Session Commands
-- `/noppo new`: Clears the conversation memory and starts a fresh session.
-- `/noppo status`: Displays active turns, process PID, and token consumption.
-- `/noppo stop`: Gracefully aborts the running turn.
-- `/noppo kill`: Forcefully terminates the agent process immediately.
-
----
-
-## General Bot Commands & Features
-
-### Group Moderation
-- `/antilink on|off`: Automatically deletes invite links and removes offenders.
-- `/antiforward on|off`: Blocks broadcast channel / newsletter forward spam.
-- `/closegroup <HH:MM>`: Schedules automated closing of group permissions.
-
-### Bot Administration
-- `/exec <bash>`: Executes shell commands on the VPS (strictly limited to numbers in `global.owner`).
-- `/modebot public|self|self2`:
-  - `public`: Responds to all users.
-  - `self`: Responds only to creator in private chat.
-  - `self2`: Silent mode (moderation hooks remain active, but user commands are ignored).
-- `/addown <number>`: Adds a new user number to the bot's owner list.
-- `/banuserbot <number>`: Completely bans a user from using the bot.
-
-### Media & Utility Tools
-- `/hd`: Enhances image resolution.
-- `/uptime`: Displays server uptime, memory usage, and load metrics.
-- `/menu`: Displays the dynamic command list generated from loaded plugins.
-
----
-
-## Plugin Development & Hot Reload
-
-All custom bot features reside in `plugins/**/*.js`.
-
-### Creating a Custom Plugin
-Create a new file, for example `plugins/tools/hello.js`:
-
-```javascript
-module.exports = {
-    name: 'hello',
-    command: ['hello', 'hi'],
-    category: 'tools',
-    description: 'Greets the user',
-    owner: false,
-    group: false,
-    admin: false,
-    run: async (context) => {
-        const { m } = context;
-        await m.reply(`Hello ${m.pushName || 'friend'}! How can I help you today?`);
-    }
-};
-```
-
-Save the file. The bot's built-in watcher detects the file and reloads it in **under 100ms** without restarting the process or dropping WhatsApp connections.
-
----
-
-## Operations & Troubleshooting
-
-### Monitoring Logs
-Always use `--nostream` when viewing PM2 logs to avoid locking the terminal session:
+Every value can be supplied through the environment:
 
 ```bash
-pm2 logs llama-hermes --nostream --lines 50
+BOT_OWNER_NUMBERS=628111,628222 \
+BOT_NUMBER=628111 \
+PAIRING_NUMBER=628111 \
+NOPPO_ROUTER_URL=http://127.0.0.1:20128/v1 \
+NOPPO_ROUTER_API_KEY=... \
+NOPPO_OPENCODE_BINARY=/usr/local/bin/opencode \
+scripts/install.sh
 ```
 
-### Re-pairing or Resetting WhatsApp Session
-If you need to change the phone number or re-pair:
+Set `NOPPO_FORCE_ENV=1` to rewrite an existing `control/noppo.env`.
 
-1. Stop the bot:
-   ```bash
-   pm2 stop llama-hermes
-   ```
-2. Clear the session files:
-   ```bash
-   rm -rf /LlamaAgentHermes/session/*
-   ```
-3. Restart the bot:
-   ```bash
-   pm2 start llama-hermes
-   ```
-4. Read the logs to fetch the new pairing code:
-   ```bash
-   sleep 5 && pm2 logs llama-hermes --nostream --lines 30
-   ```
-
-### Running the Test Suites
-The repository includes 13 Node.js test suites:
+## Manual install
 
 ```bash
-node --test test/*.test.js
+npm install
+
+python3 -m venv mcp/.venv
+mcp/.venv/bin/pip install -r mcp/requirements.txt
+
+cp control/noppo.env.example control/noppo.env
+chmod 600 control/noppo.env
+# edit control/noppo.env
+
+npm test
+node index.js
 ```
 
-Expected result:
+`control/noppo.env` is loaded automatically by `lib/load_env.js`; variables
+already present in the real environment win over the file.
+
+## Configuration
+
+| Variable | Purpose |
+|---|---|
+| `BOT_OWNER_NUMBERS` | Comma-separated owner numbers (digits only) |
+| `BOT_NUMBER` | Bot's own number, used for identity checks |
+| `PAIRING_NUMBER` | Optional; number that receives the pairing code. Empty = QR mode |
+| `NOPPO_OPENCODE_BINARY` | Path to `opencode` |
+| `NOPPO_ENGINE_PROVIDER` | OpenCode provider ID, default `9router` |
+| `NOPPO_AGENT` | OpenCode agent name, default `noppo` |
+| `NOPPO_WORKDIR` | Working directory for agent turns, default repo root |
+| `NOPPO_ROUTER_URL` | OpenAI-compatible base URL used for image analysis |
+| `NOPPO_ROUTER_API_KEY` | Key for that router |
+| `WA_STT_PYTHON` | Optional Python with `faster_whisper` for voice notes |
+| `WA_CONTROL_PORT` | Control API port, default `5685` |
+
+The control API token is generated on first start at
+`control/control_token` (mode `0600`). Do not commit it.
+
+## Models
+
+Models are registered in `lib/noppo_config.js`. Each entry has:
+
+- `id` — the name shown to the owner (`/noppo listmodel`);
+- `engineModel` — the model ID inside the OpenCode provider;
+- `contextWindow`, `maxInputTokens`, `maxOutputTokens`;
+- `supportsImage`.
+
+`getEngineModel()` prefixes the provider from `NOPPO_ENGINE_PROVIDER`, so
+`ca/deepseek-v4-1-flash-1017` becomes
+`9router/ca/deepseek-v4-1-flash-1017` for `opencode run --model`.
+
+Defaults on this machine:
+
+| Shown name | Engine model | Context | Vision |
+|---|---|---|---|
+| DeepSeek V4.1 Flash 1017 (default) | `9router/ca/deepseek-v4-1-flash-1017` | 1,000,000 | no |
+| GPT Luna 6 1M | `9router/ca/gpt-6-luna` | 1,050,000 | yes |
+| HY4 Flash Free 1M | `9router/ca/hy4` | 200,000 | no |
+
+The default model is text-only. To analyse images, switch to a vision model and
+enable it for image analysis:
 
 ```text
-ℹ tests 13
-ℹ suites 0
-ℹ pass 13
-ℹ fail 0
+/noppo modelimage cx/gpt-6-luna[1m] on
+/noppo selectmodel cx/gpt-6-luna[1m]
 ```
 
----
+To use another OpenCode provider, register it in OpenCode's config and set
+`NOPPO_ENGINE_PROVIDER` in `control/noppo.env`.
 
-## Security & Privacy Guardrails
+## OpenCode integration
 
-1. **Zero Disk Storage for Conversations**: Raw messages are buffered strictly in memory (`lib/message_cache.js`) for 30 minutes, keeping conversations confidential.
-2. **Private Document Routing**: The agent is strictly instructed never to send raw documents, archives, or internal files (`.zip`, `.sql`, `.env`) into public groups. File outputs default to the verified owner's private chat via `send_document`.
-3. **Execution Restrictions**: Dangerous commands like `/exec` strictly verify the sender's phone number and WhatsApp LID against `global.owner`.
+- `opencode.json` registers the local `wa_control` MCP server
+  (`codemode: false`, so tools are called directly).
+- `.opencode/agents/noppo.md` is the agent persona and operating policy.
+- `mcp/run-wa-control.sh` starts the MCP server with `mcp/.venv/bin/python`.
+- `AGENTS.md` contains repository-level instructions for coding agents.
 
----
+Each Noppo session stores the OpenCode session ID (`engineSessionId`). Follow-up
+messages resume it with `opencode run --session ...`. `/noppo stop` calls the
+OpenCode interrupt API, then falls back to `SIGTERM`/`SIGKILL`.
 
-## License & Credits
+## Using Noppo
 
-- **License**: MIT
-- **Author**: Stenly Christian ([@glarceny](https://github.com/glarceny))
-- **Core Libraries**: [@itsliaaa/baileys](https://github.com/itsliaaa/baileys) & [Nous Research Hermes](https://github.com/NousResearch/Hermes-Agent)
-EOF
+Owner triggers:
+
+- private chat: any message once Noppo is ON;
+- group: mention the bot, reply to a bot message, or start with `noppo`.
+
+Commands:
+
+```text
+/noppo on | off | status
+/noppo stop | kill
+/noppo new
+/noppo resume <session_id>
+/noppo selectmodel <ID|number>
+/noppo modeldefault <ID|number>
+/noppo modeluniversal <ID|number>
+/noppo modelimage <number|ID> on|off
+/noppo listsesi
+/noppo listmodel
+```
+
+Sessions are created automatically on the first owner mention; `/noppo new` is
+not required.
+
+## WhatsApp MCP tools
+
+`wa_control` exposes the bot's own control API. Common tools:
+
+- `wa_control_health` — control API and socket health;
+- `wa_group_list`, `wa_group_info`, `wa_group_members`;
+- `wa_group_setting`, `wa_group_schedule`, `wa_group_schedule_status`;
+- `wa_group_members_action` (kick/add/promote/demote), `wa_group_invite`,
+  `wa_group_rename`, `wa_group_description`, `wa_group_join_requests`,
+  `wa_group_join`, `wa_group_leave`;
+- `wa_message_recent`, `wa_message_get`, `wa_message_search`,
+  `wa_message_thread`, `wa_message_fetch`, `wa_message_delete_own`;
+- `wa_media_save`, `wa_media_list`, `wa_media_get`, `wa_media_tag`,
+  `wa_media_send`, `wa_media_delete`, `wa_media_stats`;
+- `wa_antiforward_status`, `wa_antiforward_exempt`.
+
+Write actions change real group state. The agent is instructed to verify
+`botIsAdmin` first and to re-read state after the action. `wa_group_leave`
+requires `confirm=true`.
+
+Verify MCP registration:
+
+```bash
+opencode mcp list
+```
+
+While the bot is stopped, `wa_control_health` returns a connection-refused
+error. That is expected; start the bot and call it again.
+
+## Tests
+
+```bash
+npm test
+```
+
+The suite uses a fake OpenCode binary, so it does not call a model or WhatsApp.
+It covers routing, sessions, streaming delivery, tool events, image context,
+media archive, and the control API.
+
+## Operations
+
+```bash
+pm2 start ecosystem.config.js
+pm2 restart noppo-agent
+pm2 logs noppo-agent --nostream --lines 100
+pm2 stop noppo-agent
+```
+
+Logs are written to `logs/noppo.out.log` and `logs/noppo.err.log`.
+
+### Re-pair WhatsApp
+
+```bash
+pm2 stop noppo-agent
+rm -rf session/
+pm2 start ecosystem.config.js
+pm2 logs noppo-agent --nostream
+```
+
+### Common failures
+
+| Symptom | Fix |
+|---|---|
+| `OpenCode CLI tidak ditemukan` | Set `NOPPO_OPENCODE_BINARY` to the real path |
+| `Model unavailable` | The provider/model is not configured in OpenCode; check `opencode models` |
+| `wa_control` connection refused | Start the bot; the control API only exists inside it |
+| Pairing code never appears | Set `PAIRING_NUMBER`, or leave it empty and scan `logs/wa-qr.txt`; remove `session/` and restart |
+| `npm install` blocks a git dependency | Keep the repo `.npmrc` (`allow-git=all`) |
+| Image analysis says the model is unsupported | Enable a vision model with `/noppo modelimage` |
+
+## Security notes
+
+- `control/noppo.env` and `control/control_token` are mode `0600` and ignored by
+  git.
+- The control API binds to `127.0.0.1` only. Never expose it publicly.
+- The agent is instructed not to send documents to groups unless the owner
+  explicitly asks for that group.
+- Do not restart the bot's own PM2 process from inside an agent turn; it kills
+  the WhatsApp socket and the turn itself.
+
+## Known limitation
+
+OpenCode's CLI JSON stream emits complete text/tool parts, not token deltas.
+WhatsApp live edits therefore update once per model step instead of per token.
+Tool progress still appears live, and the final answer is unchanged. Token-level
+streaming would require OpenCode's HTTP/SSE API instead of `opencode run`.
+
+## License
+
+MIT. See the repository for credits and upstream licenses.

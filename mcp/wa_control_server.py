@@ -9,7 +9,8 @@ WhatsApp yang berebut, dan aksi tetap dieksekusi oleh socket yang sudah login.
 Env:
   WA_CONTROL_URL    default http://127.0.0.1:5685
   WA_CONTROL_TOKEN  opsional; kalau kosong dibaca dari
-                    /LlamaAgentHermes/control/control_token
+                    <repo>/control/control_token
+  WA_CONTROL_TOKEN_FILE  override path token
 """
 
 from __future__ import annotations 
@@ -26,7 +27,8 @@ from mcp .server .mcpserver import MCPServer
 
 BASE_URL =os .environ .get ("WA_CONTROL_URL","http://127.0.0.1:5685").rstrip ("/")
 TOKEN_FILE =Path (
-os .environ .get ("WA_CONTROL_TOKEN_FILE","/LlamaAgentHermes/control/control_token")
+os .environ .get ("WA_CONTROL_TOKEN_FILE")
+or (Path (__file__).resolve ().parent .parent /"control"/"control_token")
 )
 TIMEOUT =float (os .environ .get ("WA_CONTROL_TIMEOUT","90"))
 
