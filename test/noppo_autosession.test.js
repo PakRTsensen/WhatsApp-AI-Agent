@@ -39,7 +39,7 @@ function main() {
     
     sessions.setPreferredModel('chat-model', 'dco/deepseek-ai/DeepSeek-V4.1-Flash-1017');
     const withModel = sessions.ensureActiveSession('chat-model');
-    assert.equal(withModel.session.modelId, 'dco/deepseek-ai/DeepSeek-V4.1-Flash-1017');
+    assert.equal(withModel.session.modelId, config.DEFAULT_MODEL_ID, 'stored legacy DCO model IDs are migrated');
 
     
     sessions.clearActiveSession('chat-new');

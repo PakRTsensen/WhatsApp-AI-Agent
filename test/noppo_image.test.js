@@ -12,7 +12,7 @@ const Sessions = require('../lib/noppo_sessions');
 const Context = require('../lib/noppo_context');
 const Vision = require('../lib/noppo_vision');
 
-const IMAGE_MODEL = 'cx/gpt-6-luna[1m]';
+const IMAGE_MODEL = '9router/ca/gpt-6-luna';
 const TEXT_MODEL = 'dco/deepseek-ai/DeepSeek-V4.1-Flash-1017';
 
 function fakeImageMessage(overrides = {}) {

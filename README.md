@@ -126,7 +126,6 @@ already present in the real environment win over the file.
 | `BOT_NUMBER` | Bot's own number, used for identity checks |
 | `PAIRING_NUMBER` | Optional; number that receives the pairing code. Empty = QR mode |
 | `NOPPO_OPENCODE_BINARY` | Path to `opencode` |
-| `NOPPO_ENGINE_PROVIDER` | OpenCode provider ID, default `9router` |
 | `NOPPO_AGENT` | OpenCode agent name, default `noppo` |
 | `NOPPO_WORKDIR` | Working directory for agent turns, default repo root |
 | `NOPPO_ROUTER_URL` | OpenAI-compatible base URL used for image analysis |
@@ -139,36 +138,30 @@ The control API token is generated on first start at
 
 ## Models
 
-Models are registered in `lib/noppo_config.js`. Each entry has:
-
-- `id` — the name shown to the owner (`/noppo listmodel`);
-- `engineModel` — the model ID inside the OpenCode provider;
-- `contextWindow`, `maxInputTokens`, `maxOutputTokens`;
-- `supportsImage`.
-
-`getEngineModel()` prefixes the provider from `NOPPO_ENGINE_PROVIDER`, so
-`ca/deepseek-v4-1-flash-1017` becomes
-`9router/ca/deepseek-v4-1-flash-1017#max` for `opencode run --model`, selecting
-DeepSeek's maximum reasoning-effort variant by default.
-
-Defaults on this machine:
-
-| Shown name | Engine model | Context | Vision |
-|---|---|---|---|
-| DeepSeek V4.1 Flash 1017 (default) | `9router/ca/deepseek-v4-1-flash-1017#max` | 1,000,000 | no |
-| GPT Luna 6 1M | `9router/ca/gpt-6-luna` | 1,050,000 | yes |
-| HY4 Flash Free 1M | `9router/ca/hy4` | 200,000 | no |
-
-The default model is text-only. To analyse images, switch to a vision model and
-enable it for image analysis:
+The WhatsApp picker reads the enabled model catalogue directly from the local
+OpenCode server (`opencode api get /api/model`), so available models from every
+configured provider appear without a hand-maintained registry. IDs are passed
+through unchanged as `provider/model`; an optional `#variant` is also preserved.
+The catalogue is cached briefly and `/noppo listmodel` is paginated. You can
+select by list number or exact model ID:
 
 ```text
-/noppo modelimage cx/gpt-6-luna[1m] on
-/noppo selectmodel cx/gpt-6-luna[1m]
+/noppo listmodel
+/noppo selectmodel 9router/ca/deepseek-v4-1-flash-1017#high
 ```
 
-To use another OpenCode provider, register it in OpenCode's config and set
-`NOPPO_ENGINE_PROVIDER` in `control/noppo.env`.
+DeepSeek V4.1 Flash defaults to `9router/ca/deepseek-v4-1-flash-1017#max`.
+Legacy Noppo IDs are migrated when existing session preferences are loaded.
+
+All configured providers are available for text turns. Image-analysis requests
+still use the separately configured OpenAI-compatible router (`NOPPO_ROUTER_URL`);
+models from other providers are not enabled for that vision adapter. Select a
+router vision model directly by its canonical ID, then enable it:
+
+```text
+/noppo selectmodel 9router/ca/gpt-6-luna
+/noppo modelimage 9router/ca/gpt-6-luna on
+```
 
 ## OpenCode integration
 
@@ -199,9 +192,9 @@ Commands:
 /noppo selectmodel <ID|number>
 /noppo modeldefault <ID|number>
 /noppo modeluniversal <ID|number>
-/noppo modelimage <number|ID> on|off
+/noppo modelimage <ID|number> on|off
+/noppo listmodel [page|search]
 /noppo listsesi
-/noppo listmodel
 ```
 
 Sessions are created automatically on the first owner mention; `/noppo new` is
